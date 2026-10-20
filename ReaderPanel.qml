@@ -17,6 +17,7 @@ Panel {
   id: root
   moduleName: "sero.bible"
   ipcTarget: "sero.bible"
+  property bool alwaysLoad: false
   implicitWidth: button.implicitWidth
   implicitHeight: button.implicitHeight
 
@@ -154,9 +155,9 @@ Panel {
     root.chapter = next.last.chapter !== undefined ? next.last.chapter : 3;
     root.selectedVerse = next.last.verse !== undefined ? next.last.verse : 0;
     root.stateLoaded = true;
-    if (root.opened) {
+    if (root.opened || root.alwaysLoad) {
       root.ensureTranslation();
-      root.recordChapter();
+      if (root.opened) root.recordChapter();
     }
   }
 
@@ -266,7 +267,7 @@ Panel {
   }
 
   function ensureTranslation() {
-    if (!root.opened || root.loadingId === root.translationId && root.loading) return;
+    if ((!root.opened && !root.alwaysLoad) || root.loadingId === root.translationId && root.loading) return;
     if (root.translation && root.translation.id === root.translationId) {
       root.rebuild();
       return;
