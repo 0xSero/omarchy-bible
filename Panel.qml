@@ -571,6 +571,11 @@ Panel {
       if (dy) root.pickerBook = Model.clamp(root.pickerBook + dy, 0, Model.BOOKS.length - 1);
       return;
     }
+    if (root.mode === "stats") {
+      if (dy) statsFlickable.contentY = Model.clamp(statsFlickable.contentY + dy * Style.space(48), 0,
+        Math.max(0, statsFlickable.contentHeight - statsFlickable.height));
+      return;
+    }
     if (root.mode !== "read") return;
     if (dy) root.moveSelection(dy);
     if (dx) root.stepChapter(dx);
@@ -1223,30 +1228,29 @@ Panel {
           anchors.fill: parent
           visible: root.mode === "stats"
 
-          Text {
-            anchors.right: parent.right
-            anchors.rightMargin: root.gutter
-            anchors.top: parent.top
-            anchors.topMargin: Style.space(8)
-            text: "Esc back"
-            color: root.muted
-            font.family: root.uiFont
-            font.pixelSize: Style.font.caption
-          }
-
           readonly property var v: root.statsView || ({})
           readonly property int cols: Math.max(1, Math.ceil(((v.cells || []).length) / 7))
-          readonly property real cell: Math.min(Style.space(14),
-            Math.max(8, (width - 2 * root.gutter - (cols - 1) * Style.space(3)) / cols))
+          readonly property real cell: Math.min(Style.space(10),
+            Math.max(6, (width - 2 * root.gutter - (cols - 1) * Style.space(3)) / cols))
+
+          Flickable {
+            id: statsFlickable
+            anchors.fill: parent
+            clip: true
+            contentWidth: width
+            contentHeight: statsColumn.implicitHeight + Style.space(16)
+            boundsBehavior: Flickable.StopAtBounds
 
           Column {
+            id: statsColumn
             x: root.gutter
             y: Style.space(8)
             width: parent.width - 2 * root.gutter
-            spacing: Style.space(14)
+            spacing: Style.space(7)
 
             Row {
               width: parent.width
+              spacing: Style.space(8)
 
               Text {
                 text: "READING ACTIVITY"
@@ -1284,7 +1288,7 @@ Panel {
                     text: String(modelData.value)
                     color: root.fg
                     font.family: root.serif
-                    font.pixelSize: Style.font.displayLarge
+                    font.pixelSize: Style.font.title + 6
                     font.bold: true
                   }
 
@@ -1418,13 +1422,13 @@ Panel {
                   anchors.right: parent.right
                   anchors.top: parent.top
                   radius: height / 2
-                  color: root.trackingSetting ? Util.alpha(root.accent, 0.75) : Util.alpha(root.fg, 0.15)
+                  color: root.trackingEnabled ? Util.alpha(root.accent, 0.75) : Util.alpha(root.fg, 0.15)
 
                   Rectangle {
                     width: parent.height - Style.space(4)
                     height: width
                     y: Style.space(2)
-                    x: root.trackingSetting ? parent.width - width - Style.space(2) : Style.space(2)
+                    x: root.trackingEnabled ? parent.width - width - Style.space(2) : Style.space(2)
                     radius: width / 2
                     color: root.fg
                   }
@@ -1434,9 +1438,20 @@ Panel {
                     cursorShape: Qt.PointingHandCursor
                     onClicked: root.toggleTracking()
                   }
+
+                  Text {
+                    anchors.right: parent.right
+                    anchors.top: parent.bottom
+                    anchors.topMargin: Style.space(2)
+                    text: Quickshell.env("DO_NOT_TRACK") === "1" ? "forced off" : (root.trackingEnabled ? "on" : "off")
+                    color: root.muted
+                    font.family: root.uiFont
+                    font.pixelSize: Style.font.caption - 1
+                  }
                 }
               }
             }
+          }
           }
         }
       }
