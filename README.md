@@ -25,7 +25,7 @@ The plugin registers the IPC target `sero.bible`, so `omarchy-shell shell toggle
 
 ## What it does
 
-- **Reader** — verse-per-line typesetting with the verse number in the margin, section headings, poetry indents, words of Christ in red, and the KJV's translator italics. Literata is bundled for Scripture; everything else follows the bar font.
+- **Reader** — verse-per-line typesetting with the verse number in the margin, section headings, poetry indents, words of Christ in white (press `r` for red letters), and the KJV's translator italics. Literata is bundled for Scripture; everything else follows the bar font.
 - **Translations** — KJV, WEB, BSB, ASV, YLT, DBY and WBS, all public domain. Switching keeps your place.
 - **Search** — `/` searches the whole Bible as you type. Every word must appear; `"exact phrase"` and `-excluded` work. Results show a snippet and jump to the verse.
 - **Jump** — `g` accepts references with fuzzy book names: `jn 3:16`, `Rom 8`, `1co13`, even `revalation 21`.
