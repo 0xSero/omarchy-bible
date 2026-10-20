@@ -634,8 +634,7 @@ Panel {
   FontLoader { id: literata; source: Qt.resolvedUrl("fonts/Literata.ttf") }
   FontLoader { id: literataItalic; source: Qt.resolvedUrl("fonts/Literata-Italic.ttf") }
 
-  // The bar mark. Left click opens the reader; middle click copies the
-  // current reference so the panel does not have to be opened for that.
+  // The bar mark. Left click opens the reader.
   BarIconButton {
     id: button
     anchors.fill: parent
@@ -643,6 +642,9 @@ Panel {
     foreground: root.fg
     tooltipText: "Bible — " + Model.referenceLabel(root.book, root.chapter, root.selectedVerse)
     text: "\uf02d"
+    onPressed: function(button) {
+      if (button === Qt.LeftButton) root.toggle();
+    }
   }
 
   KeyboardPanel {
