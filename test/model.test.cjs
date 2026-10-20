@@ -44,6 +44,13 @@ test("John 3:16 is typeset with words of Christ in the chosen red", () => {
   assert.match(verse.html, /For God so loved the world/);
 });
 
+test("span offsets survive curly quotes (byte offsets were converted)", () => {
+  const genesis = chapter(0, 4);
+  const verse = genesis.find((item) => item.type === "verse" && item.number === 9);
+  assert.match(verse.html, /<i>is<\/i> Abel/);
+  assert.match(verse.html, /<i>Am<\/i> I my brother’s keeper/);
+});
+
 test("turning red letters off removes the font wrapper", () => {
   const items = context.chapterItems(kjv, 42, 3, { ...options, redLetters: false });
   const verse = items.find((item) => item.type === "verse" && item.number === 16);

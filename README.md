@@ -33,6 +33,10 @@ The plugin registers the IPC target `sero.bible`, so `omarchy-shell shell toggle
 - **Book picker** — click the chapter title for all 66 books and their chapters.
 - **Remembered** — translation, place, highlights, bookmarks, notes, red-letter choice and text size live in `~/.local/state/omarchy/bible.json`.
 
+## Scope
+
+This is a companion panel, not a replacement for bible-rs. It keeps the reader, all seven bundled translations, search and the study marks. Parallel columns, compare view, licensed/online translation import, and JSON/Markdown export stay in the native app.
+
 ## Keys
 
 | Key | Action |
