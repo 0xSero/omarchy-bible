@@ -2,17 +2,15 @@
   "schemaVersion": 1,
   "id": "sero.bible",
   "name": "Bible",
-  "version": "1.2.0",
+  "version": "1.1.1",
   "author": "0xSero",
   "license": "MIT",
-  "description": "A fullscreen, typeset Bible reader for Omarchy: seven public-domain translations, book and chapter navigation, read history, search, highlights, notes and bookmarks.",
+  "description": "A fast, typeset Bible reader in the Omarchy bar: seven public-domain translations, instant search, highlights, notes and bookmarks.",
   "kinds": [
-    "bar-widget",
-    "overlay"
+    "bar-widget"
   ],
   "entryPoints": {
-    "barWidget": "BarWidget.qml",
-    "overlay": "Fullscreen.qml"
+    "barWidget": "ReaderPanel.qml"
   },
   "barWidget": {
     "displayName": "Bible",
@@ -25,6 +23,5 @@
     ],
     "defaultSection": "right",
     "allowMultiple": false
-  },
-  "keepLoaded": true
+  }
 }
