@@ -58,6 +58,18 @@ This is a companion panel, not a replacement for bible-rs. It keeps the reader, 
 
 Enter in the reader copies the selected verse. Middle-clicking the bar mark copies the current reference.
 
+## Remove
+
+```bash
+omarchy plugin remove sero.bible
+```
+
+The plugin writes only `~/.local/state/omarchy/bible.json`; remove that file too if you want to forget highlights, notes and bookmarks.
+
+## Dependencies
+
+None at runtime. Everything the panel reads is committed: the seven translation JSON files, Literata, and the QML. `python3` with `zstandard` plus `curl` are only needed to rebuild the text from bible-rs's `.bbl` sources.
+
 ## Data
 
 `data/<id>.json` is generated from bible-rs's pinned `.bbl` files by `tools/build_data.py`. The converter keeps the `.bbl` structural marks and character spans, and rewrites byte offsets to QML string indices. To refresh:
