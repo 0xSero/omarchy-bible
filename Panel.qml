@@ -82,7 +82,7 @@ Panel {
       highlights: {},
       bookmarks: {},
       notes: {},
-      redLetters: true,
+      redLetters: false,
       fontSize: 18,
       tracking: true
     };
@@ -111,7 +111,7 @@ Panel {
   readonly property var htmlOptions: ({
     red: cssColor(root.jesusColor),
     accent: cssColor(root.matchColor),
-    redLetters: root.library.redLetters !== false
+    redLetters: root.library.redLetters === true
   })
 
   // ---- State file ------------------------------------------------------
@@ -144,7 +144,7 @@ Panel {
       next.highlights = saved.highlights || {};
       next.bookmarks = saved.bookmarks || {};
       next.notes = saved.notes || {};
-      next.redLetters = saved.redLetters !== false;
+      next.redLetters = saved.redLetters === true;
       next.fontSize = Math.max(14, Math.min(30, parseInt(saved.fontSize, 10) || 18));
       next.tracking = saved.tracking !== false;
     }
@@ -169,7 +169,7 @@ Panel {
       highlights: root.library.highlights,
       bookmarks: root.library.bookmarks,
       notes: root.library.notes,
-      redLetters: root.library.redLetters !== false,
+      redLetters: root.library.redLetters === true,
       fontSize: root.library.fontSize,
       tracking: root.library.tracking !== false
     };
