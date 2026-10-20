@@ -1,0 +1,479 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Omarchy Bible — full-screen reader (design mockup)</title>
+<style>
+  @font-face {
+    font-family: "Literata";
+    src: url("../fonts/Literata.ttf") format("truetype");
+    font-weight: 200 900;
+    font-style: normal;
+  }
+  @font-face {
+    font-family: "Literata";
+    src: url("../fonts/Literata-Italic.ttf") format("truetype");
+    font-weight: 200 900;
+    font-style: italic;
+  }
+
+  :root {
+    --bg: #000;
+    --surface: #0b0b0b;
+    --raised: #111;
+    --line: #1c1c1c;
+    --line-2: #262626;
+    --fg: #e6e6e6;
+    --muted: #7c7c7c;
+    --faint: #4a4a4a;
+    --text: #f3f0e8;          /* scripture, incl. words of Christ */
+    --accent: #8fb3d9;        /* selection / focus only */
+    --hl-yellow: #e5c07b;
+    --hl-green: #98c379;
+    --hl-blue: #61afef;
+    --hl-purple: #c678dd;
+    --hl-red: #e06c75;
+    --hl-orange: #d19a66;
+    --serif: "Literata", Georgia, "Times New Roman", serif;
+    --sans: system-ui, -apple-system, "Segoe UI", Inter, sans-serif;
+    --mono: ui-monospace, "JetBrains Mono", "SF Mono", Menlo, monospace;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: #050505; }
+  body {
+    color: var(--fg);
+    font-family: var(--sans);
+    font-size: 13px;
+    -webkit-font-smoothing: antialiased;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+  }
+
+  .screen {
+    width: 100%;
+    max-width: 1440px;
+    height: 100vh;
+    max-height: 900px;
+    min-height: 680px;
+    background: var(--bg);
+    display: grid;
+    grid-template-rows: 28px 1fr 34px;
+    overflow: hidden;
+    border: 1px solid #141414;
+  }
+
+  /* ---- Omarchy top bar ------------------------------------------------ */
+  .topbar {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    padding: 0 14px;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--muted);
+    border-bottom: 1px solid var(--line);
+  }
+  .ws { display: flex; gap: 10px; align-items: center; }
+  .ws span { width: 6px; height: 6px; border-radius: 50%; background: var(--faint); }
+  .ws span.on { background: var(--fg); width: 14px; border-radius: 3px; }
+  .ws .glyph { margin-left: 8px; color: var(--fg); letter-spacing: .02em; }
+  .clock { color: var(--fg); }
+  .status { display: flex; gap: 16px; justify-content: flex-end; align-items: center; }
+  .status svg { width: 13px; height: 13px; stroke: var(--muted); fill: none; stroke-width: 1.6; }
+  .status .book svg { stroke: var(--fg); }
+
+  /* ---- Body grid ------------------------------------------------------ */
+  .body {
+    display: grid;
+    grid-template-columns: 252px 1fr 264px;
+    min-height: 0;
+  }
+
+  /* ---- Left rail ------------------------------------------------------ */
+  .rail {
+    border-right: 1px solid var(--line);
+    padding: 18px 0 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .rail section { padding: 0 18px; }
+  .label {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--faint);
+    margin: 0 0 9px;
+    display: flex;
+    justify-content: space-between;
+  }
+  .label kbd { letter-spacing: 0; text-transform: none; }
+
+  .search {
+    display: flex; align-items: center; gap: 8px;
+    height: 32px; padding: 0 10px;
+    background: var(--surface);
+    border: 1px solid var(--line-2);
+    border-radius: 4px;
+    color: var(--muted);
+  }
+  .search svg { width: 13px; height: 13px; stroke: var(--muted); fill: none; stroke-width: 1.8; }
+  .search span { flex: 1; }
+
+  .books { display: flex; flex-direction: column; }
+  .book-row {
+    display: flex; justify-content: space-between; align-items: baseline;
+    padding: 5px 0;
+    color: var(--muted);
+  }
+  .book-row.current { color: var(--fg); }
+  .book-row small { font-family: var(--mono); font-size: 10.5px; color: var(--faint); }
+
+  .chapters {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 3px;
+    margin-top: 8px;
+  }
+  .chapters span {
+    font-family: var(--mono);
+    font-size: 11px;
+    text-align: center;
+    padding: 4px 0;
+    color: var(--muted);
+    border-radius: 3px;
+  }
+  .chapters span.read { color: var(--fg); }
+  .chapters span.current { background: var(--raised); color: var(--fg); box-shadow: inset 0 0 0 1px var(--accent); }
+
+  .tr { display: flex; flex-wrap: wrap; gap: 2px; font-family: var(--mono); font-size: 11.5px; }
+  .tr span { padding: 4px 7px; color: var(--muted); border-radius: 3px; }
+  .tr span.on { background: #1a1a1a; color: var(--fg); }
+
+  .marks { display: flex; flex-direction: column; gap: 2px; }
+  .mark {
+    display: grid; grid-template-columns: 8px 1fr auto; gap: 10px; align-items: center;
+    padding: 5px 0; color: var(--muted);
+  }
+  .mark i { width: 6px; height: 6px; border-radius: 50%; background: var(--faint); }
+  .mark b { font-weight: 400; color: var(--fg); }
+  .mark small { font-family: var(--mono); font-size: 10.5px; color: var(--faint); }
+
+  .activity { margin-top: auto; }
+  .heat { display: grid; grid-template-columns: repeat(15, 1fr); gap: 3px; }
+  .heat span { aspect-ratio: 1; border-radius: 2px; background: #141414; }
+  .heat .a1 { background: #2a2a2a; }
+  .heat .a2 { background: #4a4a4a; }
+  .heat .a3 { background: #8a8a8a; }
+  .heat .a4 { background: #d8d8d8; }
+  .stat { display: flex; justify-content: space-between; margin-top: 10px; font-family: var(--mono); font-size: 11px; color: var(--muted); }
+  .stat b { color: var(--fg); font-weight: 400; }
+
+  /* ---- Reading column ------------------------------------------------- */
+  .reader {
+    min-height: 0;
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    justify-content: center;
+  }
+  .reader::after {               /* quiet fade where the chapter continues */
+    content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 90px;
+    background: linear-gradient(transparent, var(--bg));
+    pointer-events: none;
+  }
+  .column { width: 100%; max-width: 736px; padding: 34px 40px 0 64px; }
+
+  .head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 26px; }
+  .head h1 {
+    font-family: var(--serif);
+    font-weight: 600;
+    font-size: 32px;
+    letter-spacing: -.01em;
+    color: var(--text);
+    margin: 0;
+  }
+  .head .nav { display: flex; gap: 18px; align-items: baseline; font-family: var(--mono); font-size: 11.5px; color: var(--muted); }
+  .head .nav b { color: var(--fg); font-weight: 400; }
+
+  .scripture {
+    font-family: var(--serif);
+    font-size: 19px;
+    line-height: 1.78;
+    color: var(--text);
+    font-weight: 400;
+  }
+  .v {
+    position: relative;
+    margin: 0 -14px;
+    padding: 1px 14px;
+    border-radius: 2px;
+  }
+  .v + .v { margin-top: 3px; }
+  .v sup {
+    position: absolute;
+    left: -34px;
+    width: 30px;
+    text-align: right;
+    top: .55em;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    line-height: 1;
+    color: var(--faint);
+  }
+  .v em { font-style: italic; color: #d9d5cb; }  /* translator italics */
+  .para { margin-top: 18px !important; }
+
+  /* selection: verses 16–17 */
+  .v.sel { background: var(--raised); }
+  .v.sel::before {
+    content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 2px; background: var(--accent);
+  }
+  .v.sel sup { color: var(--accent); }
+  .v.sel-first { border-radius: 2px 2px 0 0; }
+  .v.sel-last  { border-radius: 0 0 2px 2px; }
+  .v.sel + .v.sel { margin-top: 0; padding-top: 4px; }
+
+  /* saved highlight: verse 8, yellow */
+  .v.hl {
+    background: linear-gradient(90deg, rgba(229,192,123,.10), rgba(229,192,123,.04));
+  }
+  .v.hl::before {
+    content: ""; position: absolute; left: 0; top: 7px; bottom: 7px; width: 2px; background: var(--hl-yellow); opacity: .75;
+  }
+  .v.has-note sup::after {
+    content: ""; position: absolute; right: -9px; top: -1px; width: 4px; height: 4px; border-radius: 50%; background: var(--muted);
+  }
+
+  /* ---- Context card --------------------------------------------------- */
+  .context { padding: 120px 20px 0 0; }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--line-2);
+    border-radius: 6px;
+    padding: 14px 14px 12px;
+  }
+  .card .ref { font-family: var(--mono); font-size: 12px; color: var(--fg); display: flex; justify-content: space-between; }
+  .card .ref small { color: var(--faint); font-size: 10.5px; }
+  .swatches { display: flex; gap: 8px; margin: 14px 0; }
+  .swatches span { width: 16px; height: 16px; border-radius: 50%; }
+  .swatches .off { width: 16px; height: 16px; border-radius: 50%; border: 1px solid var(--faint); position: relative; }
+  .swatches .off::after { content: ""; position: absolute; left: 7px; top: 1px; width: 1px; height: 12px; background: var(--faint); transform: rotate(45deg); }
+  .actions { display: flex; flex-direction: column; border-top: 1px solid var(--line); padding-top: 6px; }
+  .act {
+    display: grid; grid-template-columns: 18px 1fr auto; gap: 10px; align-items: center;
+    padding: 6px 0; color: var(--fg);
+  }
+  .act svg { width: 14px; height: 14px; stroke: var(--muted); fill: none; stroke-width: 1.6; }
+  .act kbd { justify-self: end; }
+  .compare { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+  .compare p { margin: 0 0 10px; font-family: var(--serif); font-size: 13px; line-height: 1.55; color: #cfcbc2; }
+  .compare p b { font-family: var(--mono); font-weight: 400; font-size: 10px; color: var(--faint); letter-spacing: .08em; margin-right: 6px; }
+
+  .card.note { margin-top: 12px; }
+  .card.note .ref { color: var(--muted); }
+  .card.note p { margin: 8px 0 0; font-size: 12.5px; line-height: 1.5; color: var(--fg); }
+
+  /* ---- Footer --------------------------------------------------------- */
+  .footer {
+    border-top: 1px solid var(--line);
+    display: flex; align-items: center; gap: 22px;
+    padding: 0 18px;
+    font-size: 11.5px;
+    color: var(--muted);
+    white-space: nowrap;
+    overflow: hidden;
+  }
+  .footer .pos { font-family: var(--mono); color: var(--fg); margin-right: 6px; }
+  .footer .right { margin-left: auto; font-family: var(--mono); color: var(--faint); }
+  kbd {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    color: var(--fg);
+    background: #141414;
+    border: 1px solid var(--line-2);
+    border-bottom-width: 2px;
+    border-radius: 3px;
+    padding: 0 5px;
+    margin-right: 5px;
+  }
+
+  /* ---- Smaller screens (1024×768) ------------------------------------- */
+  @media (max-width: 1280px) {
+    .body { grid-template-columns: 220px 1fr; }
+    .context { display: none; }
+    .footer .opt { display: none; }
+  }
+  @media (max-width: 1100px) {
+    .body { grid-template-columns: 200px 1fr; }
+    .column { padding: 28px 28px 0 56px; }
+    .scripture { font-size: 18px; line-height: 1.72; }
+    .marks .mark:nth-child(n+3) { display: none; }
+  }
+  @media (max-height: 800px) {
+    .rail { gap: 14px; }
+    .books .book-row:nth-child(n+5) { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="screen">
+
+  <!-- Omarchy bar -->
+  <header class="topbar">
+    <div class="ws">
+      <span></span><span class="on"></span><span></span><span></span>
+      <span class="glyph">bible</span>
+    </div>
+    <div class="clock">Tue 20 Oct · 06:42</div>
+    <div class="status">
+      <span class="book" title="Bible"><svg viewBox="0 0 16 16"><path d="M3 2.5h7.5a2 2 0 0 1 2 2V14H5a2 2 0 0 1-2-2z"/><path d="M3 12a2 2 0 0 1 2-2h7.5"/><path d="M7.5 4.5v4M5.7 6.2h3.6"/></svg></span>
+      <svg viewBox="0 0 16 16"><path d="M1.5 6a9.5 9.5 0 0 1 13 0M4 8.8a6 6 0 0 1 8 0M6.5 11.5a2.2 2.2 0 0 1 3 0"/></svg>
+      <svg viewBox="0 0 16 16"><path d="M3 6h2.5L9 3v10l-3.5-3H3z"/><path d="M11.5 5.5a3.5 3.5 0 0 1 0 5"/></svg>
+      <svg viewBox="0 0 16 16"><rect x="1.5" y="4.5" width="11.5" height="7" rx="1.2"/><path d="M14.5 7v2"/><rect x="3" y="6" width="7" height="4" fill="#7c7c7c" stroke="none"/></svg>
+    </div>
+  </header>
+
+  <div class="body">
+
+    <!-- Left rail -->
+    <aside class="rail">
+      <section>
+        <div class="search">
+          <svg viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5 14 14"/></svg>
+          <span>Search or jump · <span style="font-family:var(--mono)">jn 3:16</span></span>
+          <kbd style="margin:0">/</kbd>
+        </div>
+      </section>
+
+      <section>
+        <p class="label">Book <kbd style="margin:0">b</kbd></p>
+        <div class="books">
+          <div class="book-row"><span>Matthew</span><small>28</small></div>
+          <div class="book-row"><span>Mark</span><small>16</small></div>
+          <div class="book-row"><span>Luke</span><small>24</small></div>
+          <div class="book-row current"><span>John</span><small>21</small></div>
+          <div class="book-row"><span>Acts</span><small>28</small></div>
+        </div>
+        <div class="chapters">
+          <span class="read">1</span><span class="read">2</span><span class="current">3</span><span>4</span><span>5</span><span>6</span><span>7</span>
+          <span>8</span><span>9</span><span>10</span><span>11</span><span>12</span><span>13</span><span>14</span>
+          <span>15</span><span>16</span><span>17</span><span>18</span><span>19</span><span>20</span><span>21</span>
+        </div>
+      </section>
+
+      <section>
+        <p class="label">Translation <kbd style="margin:0">t</kbd></p>
+        <div class="tr">
+          <span class="on">KJV</span><span>WEB</span><span>BSB</span><span>ASV</span><span>YLT</span><span>DBY</span><span>WBS</span>
+        </div>
+      </section>
+
+      <section>
+        <p class="label">Bookmarks <span>4</span></p>
+        <div class="marks">
+          <div class="mark"><i style="background:var(--hl-yellow)"></i><b>John 3:16</b><small>today</small></div>
+          <div class="mark"><i></i><span>Psalm 23:1</span><small>2d</small></div>
+          <div class="mark"><i style="background:var(--hl-blue)"></i><span>Romans 8:28</span><small>1w</small></div>
+          <div class="mark"><i></i><span>Isaiah 40:31</span><small>3w</small></div>
+        </div>
+      </section>
+
+      <section class="activity">
+        <p class="label">Activity <span>15 wk</span></p>
+        <div class="heat">
+          <span></span><span class="a1"></span><span></span><span class="a2"></span><span class="a1"></span><span></span><span class="a2"></span><span class="a3"></span><span class="a1"></span><span class="a2"></span><span></span><span class="a2"></span><span class="a3"></span><span class="a2"></span><span class="a3"></span>
+          <span class="a1"></span><span class="a2"></span><span class="a1"></span><span></span><span class="a2"></span><span class="a3"></span><span class="a2"></span><span class="a1"></span><span class="a2"></span><span class="a3"></span><span class="a2"></span><span class="a1"></span><span class="a3"></span><span class="a3"></span><span class="a4"></span>
+          <span></span><span class="a1"></span><span class="a2"></span><span class="a2"></span><span class="a1"></span><span class="a2"></span><span class="a3"></span><span class="a2"></span><span class="a3"></span><span class="a2"></span><span class="a3"></span><span class="a4"></span><span class="a3"></span><span class="a3"></span><span class="a4"></span>
+        </div>
+        <div class="stat"><span><b>12</b> day streak</span><span><b>214</b> chapters</span></div>
+      </section>
+    </aside>
+
+    <!-- Reading column -->
+    <main class="reader">
+      <div class="column">
+        <div class="head">
+          <h1>John 3</h1>
+          <div class="nav"><span>‹ 2</span><b>KJV</b><span>4 ›</span></div>
+        </div>
+
+        <div class="scripture">
+          <p class="v"><sup>1</sup>There was a man of the Pharisees, named Nicodemus, a ruler of the Jews:</p>
+          <p class="v"><sup>2</sup>The same came to Jesus by night, and said unto him, Rabbi, we know that thou art a teacher come from God: for no man can do these miracles that thou doest, except God be with him.</p>
+          <p class="v"><sup>3</sup>Jesus answered and said unto him, Verily, verily, I say unto thee, Except a man be born again, he cannot see the kingdom of God.</p>
+          <p class="v"><sup>4</sup>Nicodemus saith unto him, How can a man be born when he is old? can he enter the second time into his mother’s womb, and be born?</p>
+          <p class="v"><sup>5</sup>Jesus answered, Verily, verily, I say unto thee, Except a man be born of water and <em>of</em> the Spirit, he cannot enter into the kingdom of God.</p>
+          <p class="v"><sup>6</sup>That which is born of the flesh is flesh; and that which is born of the Spirit is spirit.</p>
+          <p class="v"><sup>7</sup>Marvel not that I said unto thee, Ye must be born again.</p>
+          <p class="v hl has-note"><sup>8</sup>The wind bloweth where it listeth, and thou hearest the sound thereof, but canst not tell whence it cometh, and whither it goeth: so is every one that is born of the Spirit.</p>
+          <p class="v para"><sup>9</sup>Nicodemus answered and said unto him, How can these things be?</p>
+          <p class="v"><sup>10</sup>Jesus answered and said unto him, Art thou a master of Israel, and knowest not these things?</p>
+          <p class="v"><sup>11</sup>Verily, verily, I say unto thee, We speak that we do know, and testify that we have seen; and ye receive not our witness.</p>
+          <p class="v"><sup>12</sup>If I have told you earthly things, and ye believe not, how shall ye believe, if I tell you <em>of</em> heavenly things?</p>
+          <p class="v"><sup>13</sup>And no man hath ascended up to heaven, but he that came down from heaven, <em>even</em> the Son of man which is in heaven.</p>
+          <p class="v"><sup>14</sup>And as Moses lifted up the serpent in the wilderness, even so must the Son of man be lifted up:</p>
+          <p class="v"><sup>15</sup>That whosoever believeth in him should not perish, but have eternal life.</p>
+          <p class="v sel sel-first"><sup>16</sup>For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life.</p>
+          <p class="v sel sel-last"><sup>17</sup>For God sent not his Son into the world to condemn the world; but that the world through him might be saved.</p>
+          <p class="v"><sup>18</sup>He that believeth on him is not condemned: but he that believeth not is condemned already, because he hath not believed in the name of the only begotten Son of God.</p>
+          <p class="v"><sup>19</sup>And this is the condemnation, that light is come into the world, and men loved darkness rather than light, because their deeds were evil.</p>
+          <p class="v"><sup>20</sup>For every one that doeth evil hateth the light, neither cometh to the light, lest his deeds should be reproved.</p>
+          <p class="v"><sup>21</sup>But he that doeth truth cometh to the light, that his deeds may be made manifest, that they are wrought in God.</p>
+        </div>
+      </div>
+    </main>
+
+    <!-- Context card for the selection -->
+    <aside class="context">
+      <div class="card">
+        <div class="ref"><span>John 3:16–17</span><small>2 verses</small></div>
+        <div class="swatches">
+          <span style="background:var(--hl-yellow)"></span>
+          <span style="background:var(--hl-green)"></span>
+          <span style="background:var(--hl-blue)"></span>
+          <span style="background:var(--hl-purple)"></span>
+          <span style="background:var(--hl-red)"></span>
+          <span style="background:var(--hl-orange)"></span>
+          <span class="off"></span>
+        </div>
+        <div class="actions">
+          <div class="act"><svg viewBox="0 0 16 16"><path d="M4 2h8v12l-4-3-4 3z"/></svg><span>Bookmark</span><kbd>m</kbd></div>
+          <div class="act"><svg viewBox="0 0 16 16"><path d="M10.5 2.5l3 3L6 13H3v-3z"/></svg><span>Add note</span><kbd>n</kbd></div>
+          <div class="act"><svg viewBox="0 0 16 16"><rect x="5" y="5" width="8.5" height="9" rx="1"/><path d="M3 11V3a1 1 0 0 1 1-1h7"/></svg><span>Copy with reference</span><kbd>y</kbd></div>
+          <div class="act"><svg viewBox="0 0 16 16"><path d="M2 4h5v9H2zM9 4h5v9H9z"/></svg><span>Compare</span><kbd>c</kbd></div>
+        </div>
+        <div class="compare">
+          <p><b>WEB</b>For God so loved the world, that he gave his one and only Son, that whoever believes in him should not perish, but have eternal life.</p>
+          <p style="margin:0"><b>YLT</b>for God did so love the world, that His Son — the only begotten — He gave, that every one who is believing in him may not perish, but may have life age-during.</p>
+        </div>
+      </div>
+
+      <div class="card note">
+        <div class="ref"><span>Note · 3:8</span><small>Oct 14</small></div>
+        <p>Same word for wind and spirit (pneuma). Read alongside Ezekiel 37.</p>
+      </div>
+    </aside>
+  </div>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <span class="pos">John 3:16–17 · 21 vv</span>
+    <span><kbd>j</kbd><kbd>k</kbd>verse</span>
+    <span><kbd>⇧</kbd>select range</span>
+    <span><kbd>h</kbd><kbd>l</kbd>chapter</span>
+    <span><kbd>/</kbd>search</span>
+    <span class="opt"><kbd>1</kbd>–<kbd style="margin-left:5px">6</kbd>highlight</span>
+    <span class="opt"><kbd>+</kbd><kbd>−</kbd>size</span>
+    <span><kbd>esc</kbd>close</span>
+    <span class="right">18px · Literata · 38% of John</span>
+  </footer>
+</div>
+</body>
+</html>
