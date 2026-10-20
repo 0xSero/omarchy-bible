@@ -1,0 +1,3 @@
+.sources/
+tools/__pycache__/
+*.pyc
