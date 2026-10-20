@@ -395,3 +395,99 @@ function parseReference(input, currentBook) {
 }
 
 function clamp(value, min, max) { return Math.max(min, Math.min(max, value)); }
+
+// ---- Private reading activity -------------------------------------------
+// The activity file is local and contains only dates, chapter references
+// and counts. No verse text, notes, book names or machine identifiers.
+var SHORT_DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+var SHORT_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+function dateKey(date) {
+  function pad(value) { return value < 10 ? "0" + value : String(value); }
+  return date.getFullYear() + "-" + pad(date.getMonth() + 1) + "-" + pad(date.getDate());
+}
+
+function dayStart(date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function addDays(date, count) {
+  var next = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  next.setDate(next.getDate() + count);
+  return next;
+}
+
+function shortDate(date) {
+  return SHORT_MONTHS[date.getMonth()] + " " + date.getDate();
+}
+
+// Twenty weeks of reading, a column a week and a row a weekday, ending today.
+// `days` is { "YYYY-MM-DD": { c: chapters, k: [chapter refs] } }. Future days
+// are not drawn. Streak counts today, or yesterday while today is still empty.
+function activityView(activity, now) {
+  activity = activity || {};
+  var counts = activity.days || {};
+  var seen = activity.seen || [];
+  var books = activity.books || [];
+  var today = dayStart(now || new Date());
+  var monday = addDays(today, -((today.getDay() + 6) % 7));
+  var start = addDays(monday, -133);
+  var length = 134 + ((today.getDay() + 6) % 7);
+
+  var raw = [], labels = [], top = 1, week = 0;
+  for (var i = 0; i < length; i++) {
+    var day = addDays(start, i);
+    var value = (counts[dateKey(day)] || {}).c || 0;
+    raw.push(value);
+    if (value > top) top = value;
+    if (i >= length - 7) week += value;
+    labels.push(SHORT_DAYS[day.getDay()] + " " + shortDate(day) + "  " +
+      (value > 0 ? value + (value === 1 ? " chapter" : " chapters") : "no reading"));
+  }
+
+  var cells = raw.map(function(value) { return value > 0 ? Math.ceil(value / top * 4) : 0; });
+  var months = [], lastMonth = -1;
+  for (var col = 0; col * 7 < length; col++) {
+    var weekStart = addDays(start, col * 7);
+    var month = weekStart.getMonth();
+    if (month !== lastMonth) {
+      months.push({ col: col, label: SHORT_MONTHS[month] });
+      lastMonth = month;
+    }
+  }
+  if (months.length > 1 && months[1].col < 3) months.shift();
+
+  var streak = 0;
+  var at = length - 1;
+  if (!raw[at]) at--;
+  while (at >= 0 && raw[at] > 0) { streak++; at--; }
+
+  var activeDays = 0, earliest = "";
+  for (var key in counts) {
+    if ((counts[key] || {}).c > 0) {
+      activeDays++;
+      if (!earliest || key < earliest) earliest = key;
+    }
+  }
+  var since = "";
+  if (earliest) {
+    var parts = earliest.split("-");
+    since = "since " + SHORT_MONTHS[parseInt(parts[1], 10) - 1] + " " + parseInt(parts[2], 10);
+  }
+
+  return {
+    type: "activity",
+    chapters: seen.length,
+    books: books.length,
+    activeDays: activeDays,
+    streak: streak,
+    week: week,
+    today: raw[length - 1] || 0,
+    since: since,
+    empty: seen.length === 0,
+    cells: cells,
+    labels: labels,
+    months: months,
+    days: raw
+  };
+}

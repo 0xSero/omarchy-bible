@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "sero.bible",
   "name": "Bible",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "author": "0xSero",
   "license": "MIT",
   "description": "A fast, typeset Bible reader in the Omarchy bar: seven public-domain translations, instant search, highlights, notes and bookmarks.",

@@ -30,6 +30,7 @@ The plugin registers the IPC target `sero.bible`, so `omarchy-shell shell toggle
 - **Search** — `/` searches the whole Bible as you type. Every word must appear; `"exact phrase"` and `-excluded` work. Results show a snippet and jump to the verse.
 - **Jump** — `g` accepts references with fuzzy book names: `jn 3:16`, `Rom 8`, `1co13`, even `revalation 21`.
 - **Study** — six highlight colours, bookmarks, and a note per verse. Copy puts the verse and reference on the clipboard.
+- **Activity** — a twenty-week reading grid with chapters, active days, streak and this week. Private: dates, chapter references and counts stay in a local file, with no network calls.
 - **Book picker** — click the chapter title for all 66 books and their chapters.
 - **Remembered** — translation, place, highlights, bookmarks, notes, red-letter choice and text size live in `~/.local/state/omarchy/bible.json`.
 
@@ -49,6 +50,7 @@ This is a companion panel, not a replacement for bible-rs. It keeps the reader, 
 | `n` | Write a note |
 | `y` | Copy verse with reference |
 | `t` | Cycle translation |
+| `s` | Reading activity dashboard |
 | `r` | Toggle red letters |
 | `+` / `-` | Larger / smaller text |
 | `g` | Jump to a reference |
@@ -57,6 +59,16 @@ This is a companion panel, not a replacement for bible-rs. It keeps the reader, 
 | `Esc` | Back, then close |
 
 Enter in the reader copies the selected verse. Middle-clicking the bar mark copies the current reference.
+
+## Privacy
+
+Reading activity is local only. `~/.local/state/omarchy/bible-activity.json` holds:
+
+- local dates (`YYYY-MM-DD`)
+- chapter references (`book:chapter`, no names or text)
+- per-day counts and all-time chapter/book counts
+
+It never records verse text, notes, searches, translation choices, account IDs, machine identifiers or IP addresses, and the plugin makes no network requests. Turn tracking off in the activity view, or set `DO_NOT_TRACK=1` in the shell environment. Existing history is kept.
 
 ## Remove
 

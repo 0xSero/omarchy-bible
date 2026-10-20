@@ -42,10 +42,15 @@ Panel {
 
   readonly property string stateDir: Quickshell.env("HOME") + "/.local/state/omarchy"
   readonly property string statePath: stateDir + "/bible.json"
+  readonly property string activityPath: stateDir + "/bible-activity.json"
 
   // ---- Canonical position and user data -------------------------------
   property var library: defaultState()
   property bool stateLoaded: false
+  property var activity: defaultActivity()
+  property bool activityLoaded: false
+  property var statsView: ({})
+  property int statsHover: -1
   property string translationId: "kjv"
   property var translation: null
   property string loadingId: ""
@@ -78,9 +83,17 @@ Panel {
       bookmarks: {},
       notes: {},
       redLetters: true,
-      fontSize: 18
+      fontSize: 18,
+      tracking: true
     };
   }
+
+  function defaultActivity() {
+    return { version: 1, days: {}, seen: [], books: [] };
+  }
+
+  readonly property bool trackingSetting: root.library.tracking !== false
+  readonly property bool trackingEnabled: Quickshell.env("DO_NOT_TRACK") !== "1" && root.trackingSetting
 
   function cssColor(color) {
     function hex(value) {
@@ -133,6 +146,7 @@ Panel {
       next.notes = saved.notes || {};
       next.redLetters = saved.redLetters !== false;
       next.fontSize = Math.max(14, Math.min(30, parseInt(saved.fontSize, 10) || 18));
+      next.tracking = saved.tracking !== false;
     }
     root.library = next;
     root.translationId = next.translation;
@@ -140,7 +154,10 @@ Panel {
     root.chapter = next.last.chapter !== undefined ? next.last.chapter : 3;
     root.selectedVerse = next.last.verse !== undefined ? next.last.verse : 0;
     root.stateLoaded = true;
-    if (root.opened) root.ensureTranslation();
+    if (root.opened) {
+      root.ensureTranslation();
+      root.recordChapter();
+    }
   }
 
   function saveState() {
@@ -153,12 +170,95 @@ Panel {
       bookmarks: root.library.bookmarks,
       notes: root.library.notes,
       redLetters: root.library.redLetters !== false,
-      fontSize: root.library.fontSize
+      fontSize: root.library.fontSize,
+      tracking: root.library.tracking !== false
     };
     stateFile.setText(JSON.stringify(saved, null, 2) + "\n");
   }
 
   function saveSoon() { saveTimer.restart(); }
+
+  // ---- Private reading activity ---------------------------------------
+  FileView {
+    id: activityFile
+    path: root.activityPath
+    printErrors: false
+    onLoaded: {
+      if (root.activityLoaded) return;
+      try {
+        root.applyActivity(JSON.parse(text()));
+      } catch (e) {
+        root.activityLoaded = true;
+      }
+    }
+    onLoadFailed: root.activityLoaded = true
+  }
+
+  Timer {
+    id: activitySaveTimer
+    interval: 350
+    onTriggered: root.saveActivity()
+  }
+
+  function applyActivity(saved) {
+    var next = defaultActivity();
+    if (saved && typeof saved === "object") {
+      next.days = saved.days && typeof saved.days === "object" ? saved.days : {};
+      next.seen = Array.isArray(saved.seen) ? saved.seen : [];
+      next.books = Array.isArray(saved.books) ? saved.books : [];
+    }
+    root.activity = next;
+    root.activityLoaded = true;
+    if (root.opened) root.recordChapter();
+  }
+
+  function saveActivity() {
+    if (!root.activityLoaded) return;
+    activityFile.setText(JSON.stringify(root.activity, null, 2) + "\n");
+  }
+
+  // One entry per local day, and one unique chapter per day. Chapter keys are
+  // references only ("42:3"), never text. This stays on this machine.
+  function recordChapter() {
+    if (!root.activityLoaded || !root.trackingEnabled) return;
+    var key = root.book + ":" + root.chapter;
+    var dayKey = Model.dateKey(new Date());
+    var days = Object.assign({}, root.activity.days || {});
+    var day = Object.assign({ c: 0, k: [] }, days[dayKey] || {});
+    day.k = (day.k || []).slice();
+    if (day.k.indexOf(key) < 0) day.k.push(key);
+    day.c = Math.max(day.c || 0, day.k.length);
+    days[dayKey] = day;
+
+    var seen = (root.activity.seen || []).slice();
+    if (seen.indexOf(key) < 0) seen.push(key);
+    var books = (root.activity.books || []).slice();
+    if (books.indexOf(root.book) < 0) books.push(root.book);
+
+    root.activity = Object.assign({}, root.activity, { version: 1, days: days, seen: seen, books: books });
+    activitySaveTimer.restart();
+    if (root.mode === "stats") root.refreshStats();
+  }
+
+  function refreshStats() {
+    root.statsView = Model.activityView(root.activity, new Date());
+  }
+
+  function openStats() {
+    if (root.mode === "stats") {
+      root.back();
+      return;
+    }
+    root.mode = "stats";
+    root.statsHover = -1;
+    root.refreshStats();
+    Qt.callLater(function() { catcher.forceActiveFocus(); });
+  }
+
+  function toggleTracking() {
+    root.library = Object.assign({}, root.library, { tracking: !root.trackingSetting });
+    root.saveSoon();
+  }
 
   // ---- Translation data ------------------------------------------------
   function dataPath(id) {
@@ -253,6 +353,7 @@ Panel {
     root.mode = "read";
     root.editingNote = false;
     root.library.last = { book: root.book, chapter: root.chapter, verse: root.selectedVerse };
+    root.recordChapter();
     root.rebuild();
     root.saveSoon();
     Qt.callLater(function() { catcher.forceActiveFocus(); });
@@ -479,6 +580,7 @@ Panel {
     if (root.mode !== "read") return;
     if (text === "g" || text === "G") root.openJump();
     else if (text === "c" || text === "C") root.openBooks();
+    else if (text === "s" || text === "S") root.openStats();
     else if (text === "/" || text === "?") root.openSearch();
     else if (text === "t" || text === "T") root.cycleTranslation();
     else if (text === "b" || text === "B") root.toggleBookmark();
@@ -497,6 +599,7 @@ Panel {
   onOpenedChanged: {
     if (root.opened) {
       root.ensureTranslation();
+      root.recordChapter();
       Qt.callLater(function() {
         catcher.forceActiveFocus();
         if (root.mode === "read" && root.selectedVerse > 0) root.scrollToVerse(root.selectedVerse);
@@ -505,6 +608,7 @@ Panel {
       root.editingNote = false;
       root.mode = "read";
       root.saveState();
+      root.saveActivity();
     }
   }
 
@@ -515,6 +619,7 @@ Panel {
   Component.onCompleted: {
     Quickshell.execDetached(["mkdir", "-p", root.stateDir]);
     stateFile.reload();
+    activityFile.reload();
   }
 
   Timer { id: noticeTimer; interval: 1600; onTriggered: root.notice = "" }
@@ -636,6 +741,7 @@ Panel {
           }
 
           PanelActionButton {
+            id: searchButton
             anchors.right: parent.right
             anchors.rightMargin: root.gutter
             anchors.verticalCenter: parent.verticalCenter
@@ -644,6 +750,16 @@ Panel {
             foreground: root.fg
             fontFamily: root.uiFont
             onClicked: root.openSearch()
+          }
+
+          PanelActionButton {
+            anchors.right: searchButton.left
+            anchors.verticalCenter: parent.verticalCenter
+            iconText: "▦"
+            tooltipText: "Reading activity (s)"
+            foreground: root.fg
+            fontFamily: root.uiFont
+            onClicked: root.openStats()
           }
         }
 
@@ -1100,6 +1216,229 @@ Panel {
             }
           }
         }
+
+        // ---- Reading activity ------------------------------------------
+        Item {
+          id: statsPage
+          anchors.fill: parent
+          visible: root.mode === "stats"
+
+          Text {
+            anchors.right: parent.right
+            anchors.rightMargin: root.gutter
+            anchors.top: parent.top
+            anchors.topMargin: Style.space(8)
+            text: "Esc back"
+            color: root.muted
+            font.family: root.uiFont
+            font.pixelSize: Style.font.caption
+          }
+
+          readonly property var v: root.statsView || ({})
+          readonly property int cols: Math.max(1, Math.ceil(((v.cells || []).length) / 7))
+          readonly property real cell: Math.min(Style.space(14),
+            Math.max(8, (width - 2 * root.gutter - (cols - 1) * Style.space(3)) / cols))
+
+          Column {
+            x: root.gutter
+            y: Style.space(8)
+            width: parent.width - 2 * root.gutter
+            spacing: Style.space(14)
+
+            Row {
+              width: parent.width
+
+              Text {
+                text: "READING ACTIVITY"
+                color: root.muted
+                font.family: root.uiFont
+                font.pixelSize: Style.font.caption
+                font.letterSpacing: 1
+              }
+
+              Text {
+                anchors.verticalCenter: parent.verticalCenter
+                text: statsPage.v.since || ""
+                color: root.muted
+                font.family: root.uiFont
+                font.pixelSize: Style.font.caption
+              }
+            }
+
+            Row {
+              spacing: Style.space(34)
+
+              Repeater {
+                model: [
+                  { value: statsPage.v.chapters || 0, label: "chapters" },
+                  { value: statsPage.v.activeDays || 0, label: "active days" },
+                  { value: statsPage.v.streak || 0, label: "day streak" },
+                  { value: statsPage.v.week || 0, label: "this week" }
+                ]
+
+                Column {
+                  required property var modelData
+                  spacing: Style.space(1)
+
+                  Text {
+                    text: String(modelData.value)
+                    color: root.fg
+                    font.family: root.serif
+                    font.pixelSize: Style.font.displayLarge
+                    font.bold: true
+                  }
+
+                  Text {
+                    text: modelData.label
+                    color: root.muted
+                    font.family: root.uiFont
+                    font.pixelSize: Style.font.caption
+                    font.letterSpacing: 0.5
+                  }
+                }
+              }
+            }
+
+            Item {
+              width: parent.width
+              height: activityGrid.height + Style.space(22)
+
+              Grid {
+                id: activityGrid
+                rows: 7
+                flow: Grid.TopToBottom
+                spacing: Style.space(3)
+
+                Repeater {
+                  model: (statsPage.v.cells || []).length
+
+                  Rectangle {
+                    required property int index
+                    readonly property int level: (statsPage.v.cells || [])[index]
+                    width: statsPage.cell
+                    height: statsPage.cell
+                    radius: 2
+                    color: level < 0 ? "transparent" : Util.alpha(root.accent, [0.07, 0.25, 0.45, 0.7, 0.95][level])
+                    border.width: root.statsHover === index ? 1 : 0
+                    border.color: root.fg
+
+                    MouseArea {
+                      anchors.fill: parent
+                      hoverEnabled: true
+                      onEntered: root.statsHover = index
+                      onExited: if (root.statsHover === index) root.statsHover = -1
+                    }
+                  }
+                }
+              }
+
+              Item {
+                anchors.top: activityGrid.bottom
+                anchors.topMargin: Style.space(5)
+                width: parent.width
+                height: Style.space(14)
+
+                Repeater {
+                  model: statsPage.v.months || []
+
+                  Text {
+                    required property var modelData
+                    x: modelData.col * (statsPage.cell + Style.space(3))
+                    text: modelData.label
+                    color: root.muted
+                    font.family: root.uiFont
+                    font.pixelSize: Style.font.caption - 1
+                  }
+                }
+              }
+            }
+
+            Text {
+              width: parent.width
+              text: {
+                var labels = statsPage.v.labels || [];
+                if (!labels.length) return "Open a chapter to start the grid.";
+                if (root.statsHover >= 0 && labels[root.statsHover]) return labels[root.statsHover];
+                return "today · " + labels[labels.length - 1];
+              }
+              color: root.muted
+              font.family: root.uiFont
+              font.pixelSize: Style.font.caption
+            }
+
+            Rectangle {
+              width: parent.width
+              height: privacy.height + Style.space(20)
+              radius: Style.cornerRadius
+              color: Util.alpha(root.fg, 0.04)
+
+              Item {
+                id: privacy
+                x: Style.space(10)
+                y: Style.space(10)
+                width: parent.width - Style.space(20)
+                height: privacyText.height
+
+                Column {
+                  id: privacyText
+                  width: parent.width - toggle.width - Style.space(12)
+                  spacing: Style.space(3)
+
+                  Text {
+                    text: "PRIVATE TRACKING"
+                    color: root.accent
+                    font.family: root.uiFont
+                    font.pixelSize: Style.font.caption
+                    font.letterSpacing: 1
+                  }
+
+                  Text {
+                    width: parent.width
+                    text: "Dates, chapter references and counts only. No verse text, notes, account or network."
+                    color: root.muted
+                    font.family: root.uiFont
+                    font.pixelSize: Style.font.caption
+                    wrapMode: Text.WordWrap
+                  }
+
+                  Text {
+                    width: parent.width
+                    text: "~/.local/state/omarchy/bible-activity.json"
+                    color: Qt.darker(root.muted, 1.2)
+                    font.family: root.uiFont
+                    font.pixelSize: Style.font.caption - 1
+                    elide: Text.ElideMiddle
+                  }
+                }
+
+                Rectangle {
+                  id: toggle
+                  width: Style.space(34)
+                  height: Style.space(18)
+                  anchors.right: parent.right
+                  anchors.top: parent.top
+                  radius: height / 2
+                  color: root.trackingSetting ? Util.alpha(root.accent, 0.75) : Util.alpha(root.fg, 0.15)
+
+                  Rectangle {
+                    width: parent.height - Style.space(4)
+                    height: width
+                    y: Style.space(2)
+                    x: root.trackingSetting ? parent.width - width - Style.space(2) : Style.space(2)
+                    radius: width / 2
+                    color: root.fg
+                  }
+
+                  MouseArea {
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: root.toggleTracking()
+                  }
+                }
+              }
+            }
+          }
+        }
       }
 
       // ---- Footer ------------------------------------------------------
@@ -1122,7 +1461,7 @@ Panel {
           anchors.leftMargin: root.gutter
           anchors.verticalCenter: parent.verticalCenter
           text: root.mode === "read"
-            ? "j/k verse · h/l chapter · g go · / search · t translation"
+            ? "j/k verse · h/l chapter · g go · / search · s activity"
             : "Esc back"
           color: root.muted
           font.family: root.uiFont

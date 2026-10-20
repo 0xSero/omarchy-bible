@@ -71,3 +71,36 @@ test("search requires every token and supports quoted phrases", () => {
   assert.ok(every.some((hit) => hit.reference === "John 3:16"));
   assert.equal(context.search(index, "God so loved -world", options, 50).some((hit) => hit.reference === "John 3:16"), false);
 });
+
+test("activity grid ends today, stays private and counts chapters per day", () => {
+  const now = new Date(2026, 9, 20); // Tuesday
+  const yesterday = new Date(2026, 9, 19);
+  const activity = {
+    days: {
+      [context.dateKey(now)]: { c: 3, k: ["42:3", "42:4", "42:5"] },
+      [context.dateKey(yesterday)]: { c: 1, k: ["19:23"] }
+    },
+    seen: ["42:3", "42:4", "42:5", "19:23"],
+    books: [42, 18]
+  };
+  const view = context.activityView(activity, now);
+  assert.equal(view.cells.length, 135); // 19 full weeks + Monday + Tuesday
+  assert.equal(view.cells[view.cells.length - 1], 4);
+  assert.equal(view.labels[view.labels.length - 1], "Tue Oct 20  3 chapters");
+  assert.equal(view.streak, 2);
+  assert.equal(view.week, 4);
+  assert.equal(view.chapters, 4);
+  assert.equal(view.books, 2);
+  assert.equal(view.activeDays, 2);
+  assert.equal(view.since, "since Oct 19");
+  assert.equal(view.empty, false);
+});
+
+test("an empty activity file produces a blank grid, not a broken one", () => {
+  const view = context.activityView({ days: {}, seen: [], books: [] }, new Date(2026, 9, 20));
+  assert.ok(view.cells.length > 0);
+  assert.equal(view.chapters, 0);
+  assert.equal(view.streak, 0);
+  assert.equal(view.empty, true);
+  assert.ok(view.cells.every((level) => level === 0));
+});
